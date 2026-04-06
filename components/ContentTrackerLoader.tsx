@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Image from "next/image";
 
 const ContentTracker = dynamic(
   () =>
@@ -9,12 +10,18 @@ const ContentTracker = dynamic(
     ssr: false,
     loading: () => (
       <div className="bg-app-grid flex min-h-screen flex-col items-center justify-center gap-4 px-6">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-900 text-sm font-bold text-white">
-          HN
+        <div className="flex h-12 items-center">
+          <Image
+            src="/hwn-logo.png"
+            alt=""
+            width={40}
+            height={48}
+            className="h-12 w-auto object-contain"
+          />
         </div>
         <div className="flex flex-col items-center gap-2">
-          <div className="h-2 w-32 animate-pulse rounded-full bg-zinc-200" />
-          <div className="h-2 w-24 animate-pulse rounded-full bg-zinc-100" />
+          <div className="h-2 w-32 animate-pulse rounded-full bg-[#dfff00]/40" />
+          <div className="h-2 w-24 animate-pulse rounded-full bg-white/12" />
         </div>
         <p className="text-xs font-medium uppercase tracking-wider text-zinc-400">
           Loading tracker

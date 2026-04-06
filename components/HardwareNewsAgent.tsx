@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { HardwareNewsItem } from "@/lib/fetch-hardware-news";
@@ -78,23 +79,41 @@ export function HardwareNewsAgent({ initialItems }: Props) {
 
   return (
     <div className="bg-app-grid flex min-h-screen flex-col">
-      <header className="sticky top-0 z-40 shrink-0 border-b border-zinc-200/80 bg-white/85 px-4 py-4 backdrop-blur-xl sm:px-6">
+      <header className="sticky top-0 z-40 shrink-0 border-b border-white/10 bg-[var(--background)]/92 px-4 py-4 backdrop-blur-xl sm:px-6">
         <div className="mx-auto flex max-w-3xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
+          <div className="flex flex-wrap items-start gap-3 sm:gap-4">
             <Link
               href="/"
-              className="mt-0.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-900"
+              className="flex h-9 shrink-0 items-center"
+              aria-label="Hardware Nation home"
             >
-              ← Pipeline
+              <Image
+                src="/hwn-logo.png"
+                alt=""
+                width={28}
+                height={36}
+                className="h-9 w-auto max-w-[34px] object-contain object-left"
+              />
+            </Link>
+            <Link
+              href="/"
+              className="mt-0.5 rounded-lg border border-white/12 bg-[var(--background)] px-3 py-1.5 text-xs font-medium text-zinc-400 transition hover:border-white/18 hover:text-zinc-200"
+            >
+              Pipeline
+            </Link>
+            <Link
+              href="/launches"
+              className="mt-0.5 rounded-lg border border-white/12 bg-[var(--background)] px-3 py-1.5 text-xs font-medium text-zinc-400 transition hover:border-white/18 hover:text-zinc-200"
+            >
+              Launches
             </Link>
             <div>
-              <p className="font-[family-name:var(--font-syne)] text-xl font-bold tracking-tight text-zinc-900">
-                Hardware news agent
+              <p className="text-xl font-semibold tracking-tight text-zinc-100">
+                News
               </p>
               <p className="mt-1 text-sm text-zinc-500">
-                Pulls the latest headlines from major tech &amp; hardware RSS
-                feeds. The list auto-refreshes about every hour while this tab
-                is open; use the buttons below to pull sooner.
+                Consumer hardware RSS. Refreshes about hourly while this tab is
+                open.
               </p>
             </div>
           </div>
@@ -103,18 +122,18 @@ export function HardwareNewsAgent({ initialItems }: Props) {
               type="button"
               disabled={busy}
               onClick={() => runAgent(false)}
-              className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 disabled:opacity-50"
+              className="rounded-lg border border-white/12 bg-[var(--background)] px-3 py-2 text-[13px] font-medium text-zinc-300 transition hover:border-white/18 hover:text-zinc-100 disabled:opacity-50"
             >
-              {busy ? "Working…" : "Fetch latest"}
+              {busy ? "Updating…" : "Refresh"}
             </button>
             <button
               type="button"
               disabled={busy}
               onClick={() => runAgent(true)}
-              className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:opacity-50"
-              title="Bypass server cache and re-pull all feeds"
+              className="rounded-lg border border-white/12 bg-white/[0.04] px-3 py-2 text-[13px] font-medium text-zinc-300 transition hover:border-white/18 hover:text-zinc-100 disabled:opacity-50"
+              title="Bypass cache and pull all feeds again"
             >
-              Force refresh
+              Hard refresh
             </button>
           </div>
         </div>
@@ -122,18 +141,13 @@ export function HardwareNewsAgent({ initialItems }: Props) {
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6">
         <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3">
-          <p className="text-sm font-medium text-zinc-600">
-            <span className="tabular-nums font-semibold text-zinc-900">
-              {items.length}
-            </span>{" "}
-            stories
-            <span className="text-zinc-400"> · </span>
-            <span className="tabular-nums">{sourceCount}</span> sources
+          <p className="text-sm tabular-nums text-zinc-500">
+            {items.length} items · {sourceCount} feeds
           </p>
           {fetchedAt ? (
-            <p className="text-xs text-zinc-400">
-              Last run:{" "}
-              <time dateTime={fetchedAt} className="tabular-nums text-zinc-500">
+            <p className="text-xs text-zinc-500">
+              Updated{" "}
+              <time dateTime={fetchedAt} className="tabular-nums text-zinc-400">
                 {new Date(fetchedAt).toLocaleString()}
               </time>
             </p>
@@ -141,7 +155,7 @@ export function HardwareNewsAgent({ initialItems }: Props) {
         </div>
 
         {error ? (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+          <div className="mb-6 rounded-lg border border-red-500/25 bg-red-950/30 px-4 py-3 text-sm text-red-200/90">
             {error}
           </div>
         ) : null}
@@ -153,27 +167,24 @@ export function HardwareNewsAgent({ initialItems }: Props) {
                 href={item.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group block rounded-2xl border border-zinc-200/90 bg-white/90 p-4 shadow-[0_1px_0_rgba(0,0,0,0.04)] ring-1 ring-zinc-950/[0.03] transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-[0_12px_32px_-20px_rgba(0,0,0,0.18)]"
+                className="group block rounded-lg border border-white/10 bg-[var(--background)] p-4 transition hover:border-white/16"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <h2 className="font-[family-name:var(--font-syne)] text-base font-bold leading-snug tracking-tight text-zinc-900 group-hover:text-zinc-700">
+                  <h2 className="min-w-0 flex-1 text-base font-semibold leading-snug text-zinc-100 group-hover:text-zinc-50">
                     {item.title}
                   </h2>
-                  <span className="shrink-0 rounded-lg bg-zinc-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-zinc-600">
+                  <span className="shrink-0 rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] font-medium text-zinc-500">
                     {item.source}
                   </span>
                 </div>
-                <p className="mt-2 text-xs font-medium tabular-nums text-zinc-400">
+                <p className="mt-2 text-xs tabular-nums text-zinc-500">
                   {formatNewsDate(item.publishedAt)}
                 </p>
                 {item.summary ? (
-                  <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-zinc-600">
+                  <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-zinc-400">
                     {item.summary}
                   </p>
                 ) : null}
-                <p className="mt-3 text-xs font-semibold text-teal-700 opacity-0 transition group-hover:opacity-100">
-                  Open article →
-                </p>
               </a>
             </li>
           ))}
@@ -181,8 +192,7 @@ export function HardwareNewsAgent({ initialItems }: Props) {
 
         {items.length === 0 && !busy ? (
           <p className="mt-12 text-center text-sm text-zinc-500">
-            No stories yet. Check your connection and tap{" "}
-            <span className="font-semibold text-zinc-700">Fetch latest</span>.
+            Nothing loaded. Use Refresh.
           </p>
         ) : null}
       </main>

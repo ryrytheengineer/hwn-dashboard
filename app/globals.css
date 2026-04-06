@@ -1,34 +1,126 @@
 @import "tailwindcss";
 
+/* Hardware Nation — electric lime on unified dark canvas */
 :root {
-  --background: #f4f4f5;
-  --foreground: #18181b;
-  --surface: #ffffff;
-  --grid-dot: rgba(24, 24, 27, 0.06);
+  color-scheme: dark;
+  --hwn-accent: #dfff00;
+  --hwn-accent-hover: #c8eb00;
+  --hwn-accent-muted: #e8ff66;
+  --hwn-ink: #0a0a0a;
+  /* Single surface color site-wide (matches .bg-app-grid base) */
+  --background: #141416;
+  --foreground: #e4e4e7;
+  --hwn-text-muted: #a1a1aa;
+  --hwn-text-subtle: #71717a;
+  --hwn-border: rgba(255, 255, 255, 0.1);
+  --hwn-border-strong: rgba(255, 255, 255, 0.16);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-syne);
+  --color-hwn-accent: var(--hwn-accent);
+  --color-hwn-accent-hover: var(--hwn-accent-hover);
+  --color-hwn-ink: var(--hwn-ink);
+  /*
+   * SF Pro on Apple (via -apple-system / BlinkMacSystemFont + named faces where
+   * installed); Segoe UI on Windows; sensible fallbacks elsewhere. No webfont —
+   * Apple does not license SF Pro for self-hosted distribution.
+   */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Helvetica, Arial,
+    sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  --font-display: var(--font-sans);
+}
+
+html {
+  background-color: var(--background);
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 
-/* Subtle field grid — reads as texture, not decoration */
+/*
+ * Cool dark canvas: charcoal base, faint blue/teal glow, micro-dot grid,
+ * and a hairline diagonal grain (no image assets).
+ */
 .bg-app-grid {
-  background-color: var(--background);
-  background-image: radial-gradient(
-    var(--grid-dot) 1px,
-    transparent 1px
-  );
-  background-size: 24px 24px;
+  background-color: #141416;
+  background-image:
+    radial-gradient(
+      ellipse 130% 90% at 0% -10%,
+      rgba(96, 165, 250, 0.09),
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 110% 85% at 100% 105%,
+      rgba(45, 212, 191, 0.065),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 70% 55% at 50% 40%,
+      rgba(255, 255, 255, 0.028),
+      transparent 65%
+    ),
+    repeating-linear-gradient(
+      -18deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.012) 2px,
+      rgba(255, 255, 255, 0.012) 3px
+    ),
+    radial-gradient(rgba(255, 255, 255, 0.038) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    24px 24px;
+  background-attachment: fixed;
+}
+
+
+/* Shared: primary CTA using brand accent */
+.hwn-btn-primary {
+  background-color: var(--hwn-accent);
+  color: var(--hwn-ink);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset;
+}
+
+.hwn-btn-primary:hover {
+  background-color: var(--hwn-accent-hover);
+}
+
+.hwn-btn-primary:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.hwn-focus-ring:focus {
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 0 0 4px rgba(223, 255, 0, 0.22);
+}
+
+/*
+ * Native date/time inputs often fail to open or appear “dead” under global
+ * color-scheme: dark (common on Windows + Chrome/Edge). Force a light
+ * scheme and readable field chrome on those controls only.
+ */
+.hwn-datetime-input {
+  color-scheme: light !important;
+  background-color: #f4f4f5 !important;
+  color: #0a0a0a !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+.hwn-datetime-input:focus {
+  border-color: rgba(0, 0, 0, 0.45) !important;
+  box-shadow: 0 0 0 4px rgba(223, 255, 0, 0.35) !important;
 }
 
 @keyframes modal-backdrop-in {
@@ -60,6 +152,10 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .bg-app-grid {
+    background-attachment: scroll;
+  }
+
   .animate-modal-backdrop,
   .animate-modal-panel {
     animation: none;
@@ -69,7 +165,7 @@ body {
 /* Kanban horizontal rail */
 .board-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgb(212 212 216) transparent;
+  scrollbar-color: color-mix(in srgb, var(--hwn-accent) 55%, #a3a3a3) transparent;
 }
 
 .board-scroll::-webkit-scrollbar {
@@ -81,10 +177,10 @@ body {
 }
 
 .board-scroll::-webkit-scrollbar-thumb {
-  background: rgb(212 212 216);
+  background: color-mix(in srgb, var(--hwn-accent) 50%, #d4d4d8);
   border-radius: 999px;
 }
 
 .board-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgb(161 161 170);
+  background: color-mix(in srgb, var(--hwn-accent) 35%, #71717a);
 }

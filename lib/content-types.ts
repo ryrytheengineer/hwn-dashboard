@@ -1,5 +1,3 @@
-export type ContentType = "ugc" | "merchant";
-
 export type StageId =
   | "emailed_rit"
   | "rit_reached_out"
@@ -7,19 +5,46 @@ export type StageId =
   | "no_reply"
   | "film_planned";
 
+export type ContentEntityKind = "person" | "product";
+
+export type ChecklistItem = {
+  id: string;
+  text: string;
+  done: boolean;
+};
+
+/** Pre-filled tasks for every new card (all start unchecked). */
+export const DEFAULT_CHECKLIST_TEMPLATES = [
+  "Script",
+  "Date planned",
+  "B-roll / assets",
+  "Thumbnail",
+  "Title & description",
+] as const;
+
 export type ContentItem = {
   id: string;
+  /** Person or product row */
+  entityKind: ContentEntityKind;
+  /** Display name (person or product name) */
   founderName: string;
-  type: ContentType;
+  /** Role for people, category/type for products */
+  jobTitle: string;
   stageId: StageId;
   /** ISO date string (YYYY-MM-DD) */
   date: string;
+  /** Local time of filming (HH:mm), used when stage is film planned */
+  filmTime: string;
   notes: string;
+  /** Optional task list for this card */
+  checklist: ChecklistItem[];
 };
 
 export const STAGES: readonly {
   id: StageId;
   title: string;
+  /** Short label for funnel summary */
+  shortLabel: string;
   dotClass: string;
   ringClass: string;
   stripeClass: string;
@@ -28,53 +53,53 @@ export const STAGES: readonly {
   {
     id: "emailed_rit",
     title: "Emailed Rit",
-    dotClass: "bg-blue-500",
-    ringClass: "ring-blue-500/25",
-    stripeClass: "border-l-blue-500",
+    shortLabel: "Emailed",
+    dotClass: "bg-[#dfff00]",
+    ringClass: "ring-[#dfff00]/35",
+    stripeClass: "border-l-[#dfff00]",
     columnTint:
-      "bg-gradient-to-b from-blue-500/[0.08] via-transparent to-transparent",
+      "bg-gradient-to-b from-[#dfff00]/[0.2] via-transparent to-transparent",
   },
   {
     id: "rit_reached_out",
     title: "Rit reached out to founder",
-    dotClass: "bg-amber-500",
-    ringClass: "ring-amber-500/25",
-    stripeClass: "border-l-amber-500",
+    shortLabel: "Rit",
+    dotClass: "bg-[#c4e807]",
+    ringClass: "ring-[#c4e807]/35",
+    stripeClass: "border-l-[#c4e807]",
     columnTint:
-      "bg-gradient-to-b from-amber-500/[0.09] via-transparent to-transparent",
+      "bg-gradient-to-b from-[#c4e807]/[0.22] via-transparent to-transparent",
   },
   {
     id: "founder_agreed",
     title: "Founder agreed",
-    dotClass: "bg-green-500",
-    ringClass: "ring-green-500/25",
-    stripeClass: "border-l-green-500",
+    shortLabel: "Agreed",
+    dotClass: "bg-[#9fcc00]",
+    ringClass: "ring-[#9fcc00]/35",
+    stripeClass: "border-l-[#9fcc00]",
     columnTint:
-      "bg-gradient-to-b from-green-500/[0.08] via-transparent to-transparent",
+      "bg-gradient-to-b from-[#9fcc00]/[0.2] via-transparent to-transparent",
   },
   {
     id: "no_reply",
     title: "No reply / declined",
-    dotClass: "bg-red-500",
-    ringClass: "ring-red-500/25",
-    stripeClass: "border-l-red-500",
+    shortLabel: "Declined",
+    dotClass: "bg-red-600",
+    ringClass: "ring-red-600/30",
+    stripeClass: "border-l-red-600",
     columnTint:
-      "bg-gradient-to-b from-red-500/[0.07] via-transparent to-transparent",
+      "bg-gradient-to-b from-red-500/[0.12] via-transparent to-transparent",
   },
   {
     id: "film_planned",
     title: "Film date planned",
-    dotClass: "bg-teal-500",
-    ringClass: "ring-teal-500/25",
-    stripeClass: "border-l-teal-500",
+    shortLabel: "Film",
+    dotClass: "bg-[#bfff3a]",
+    ringClass: "ring-[#bfff3a]/40",
+    stripeClass: "border-l-[#bfff3a]",
     columnTint:
-      "bg-gradient-to-b from-teal-500/[0.09] via-transparent to-transparent",
+      "bg-gradient-to-b from-[#bfff3a]/[0.2] via-transparent to-transparent",
   },
 ] as const;
 
 export const FINAL_STAGE_ID: StageId = "film_planned";
-
-export const TYPE_LABELS: Record<ContentType, string> = {
-  ugc: "UGC Creator",
-  merchant: "Merchant Asset",
-};

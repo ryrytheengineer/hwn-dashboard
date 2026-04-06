@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import Parser from "rss-parser";
 import { HARDWARE_NEWS_INTERVAL_SECONDS } from "@/lib/hardware-news-config";
+import { shouldIncludeHardwareNewsItem } from "@/lib/hardware-news-filter";
 import { HARDWARE_NEWS_FEEDS } from "@/lib/hardware-news-sources";
 
 export type HardwareNewsItem = {
@@ -69,7 +70,11 @@ async function aggregateFeeds(): Promise<HardwareNewsItem[]> {
   const batches = await Promise.all(
     HARDWARE_NEWS_FEEDS.map((f) => fetchOneFeed(f.url, f.shortName))
   );
-  const flat = batches.flat();
+  const flat = batches
+    .flat()
+    .filter((item) =>
+      shouldIncludeHardwareNewsItem(item.title, item.summary)
+    );
   const seen = new Set<string>();
   const unique: HardwareNewsItem[] = [];
   for (const item of flat) {
@@ -91,7 +96,7 @@ export function fetchHardwareNewsUncached(): Promise<HardwareNewsItem[]> {
   return aggregateFeeds();
 }
 
-export const getHardwareNews = unstable_cache(aggregateFeeds, ["hardware-news-v1"], {
+export const getHardwareNews = unstable_cache(aggregateFeeds, ["hardware-news-v3"], {
   revalidate: HARDWARE_NEWS_INTERVAL_SECONDS,
   tags: ["hardware-news"],
 });

@@ -1,47 +1,81 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
-import { FounderModal } from "@/components/FounderModal";
-import { useContentItems } from "@/hooks/useContentItems";
-import type { ContentItem, ContentType, StageId } from "@/lib/content-types";
 import {
-  FINAL_STAGE_ID,
-  STAGES,
-  TYPE_LABELS,
-} from "@/lib/content-types";
+  closestCorners,
+  DndContext,
+  type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import Image from "next/image";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FounderModal } from "@/components/FounderModal";
+import {
+  PipelineKanbanCard,
+  PipelineKanbanCardPreview,
+} from "@/components/PipelineKanbanCard";
+import { PipelineKanbanColumn } from "@/components/PipelineKanbanColumn";
+import { useContentItems } from "@/hooks/useContentItems";
+import { parsePipelineImportJson } from "@/lib/content-normalize";
+import type { ContentItem, StageId } from "@/lib/content-types";
+import { FINAL_STAGE_ID, STAGES } from "@/lib/content-types";
+import {
+  compareFilmOrder,
+  filterItemsBySearch,
+  upcomingFilms,
+} from "@/lib/pipeline-utils";
 
-type Filter = "all" | ContentType;
+const STAGE_ID_SET = new Set<string>(STAGES.map((s) => s.id));
 
-const FILTER_TABS: { id: Filter; label: string; short: string }[] = [
-  { id: "all", label: "All types", short: "All" },
-  { id: "ugc", label: TYPE_LABELS.ugc, short: "UGC" },
-  { id: "merchant", label: TYPE_LABELS.merchant, short: "Merchant" },
-];
+function isTypingTarget(el: EventTarget | null): boolean {
+  if (!el || !(el instanceof HTMLElement)) return false;
+  const tag = el.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (el.isContentEditable) return true;
+  return false;
+}
 
-function formatDisplayDate(iso: string): string {
-  if (!iso) return "—";
-  const d = new Date(iso + "T12:00:00");
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+function formatShortFilmLine(item: ContentItem): string {
+  if (!item.date?.trim()) return item.founderName;
+  const d = new Date(item.date + "T12:00:00");
+  const dateStr = Number.isNaN(d.getTime())
+    ? item.date
+    : d.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      });
+  const t = item.filmTime?.trim();
+  return t ? `${item.founderName} · ${dateStr} ${t}` : `${item.founderName} · ${dateStr}`;
 }
 
 export function ContentTracker() {
-  const { items, addItem, updateItem, removeItem } = useContentItems();
-  const [filter, setFilter] = useState<Filter>("all");
+  const { items, addItem, updateItem, removeItem, replaceAllItems } =
+    useContentItems();
+  const [search, setSearch] = useState("");
+  const [compact, setCompact] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [editing, setEditing] = useState<ContentItem | null>(null);
   const [createNonce, setCreateNonce] = useState(0);
+  const [activeDragItem, setActiveDragItem] = useState<ContentItem | null>(
+    null
+  );
 
-  const filtered = useMemo(() => {
-    if (filter === "all") return items;
-    return items.filter((i) => i.type === filter);
-  }, [items, filter]);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const importRef = useRef<HTMLInputElement>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  const filtered = useMemo(
+    () => filterItemsBySearch(items, search),
+    [items, search]
+  );
 
   const byStage = useMemo(() => {
     const map = new Map<StageId, ContentItem[]>();
@@ -53,199 +87,317 @@ export function ContentTracker() {
     return map;
   }, [filtered]);
 
-  const openCreate = () => {
+  const upcoming = useMemo(
+    () => upcomingFilms(filtered, 4),
+    [filtered]
+  );
+
+  const openCreate = useCallback(() => {
     setCreateNonce((n) => n + 1);
     setModalMode("create");
     setEditing(null);
     setModalOpen(true);
-  };
+  }, []);
 
-  const openEdit = (item: ContentItem) => {
+  const openEdit = useCallback((item: ContentItem) => {
     setModalMode("edit");
     setEditing(item);
     setModalOpen(true);
-  };
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (modalOpen) return;
+      if (isTypingTarget(e.target)) return;
+      if (e.key === "a" || e.key === "A") {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        e.preventDefault();
+        openCreate();
+      }
+      if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [modalOpen, openCreate]);
+
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const id = String(event.active.id);
+      const item = items.find((i) => i.id === id) ?? null;
+      setActiveDragItem(item);
+    },
+    [items]
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveDragItem(null);
+      const { active, over } = event;
+      if (!over) return;
+      const overId = String(over.id);
+      if (!STAGE_ID_SET.has(overId)) return;
+      const itemId = String(active.id);
+      const item = items.find((i) => i.id === itemId);
+      if (!item || item.stageId === overId) return;
+      updateItem({ ...item, stageId: overId as StageId });
+    },
+    [items, updateItem]
+  );
+
+  const handleDragCancel = useCallback(() => {
+    setActiveDragItem(null);
+  }, []);
 
   const handleSave = (item: ContentItem) => {
     if (modalMode === "create") addItem(item);
     else updateItem(item);
   };
 
+  const exportJson = () => {
+    const blob = new Blob([JSON.stringify(items, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const d = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `hardware-nation-pipeline-${d}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const onImportPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as unknown;
+      const next = parsePipelineImportJson(parsed);
+      if (!next || next.length === 0) {
+        window.alert("No valid records in file.");
+        return;
+      }
+      const ok = window.confirm(
+        `Replace ${items.length} items with ${next.length} from file?`
+      );
+      if (ok) replaceAllItems(next);
+    } catch {
+      window.alert("Import failed.");
+    }
+  };
+
+  const activeStage = activeDragItem
+    ? STAGES.find((s) => s.id === activeDragItem.stageId) ?? STAGES[0]
+    : STAGES[0];
+
   return (
     <div className="bg-app-grid flex min-h-0 flex-1 flex-col">
-      <header className="sticky top-0 z-40 shrink-0 border-b border-zinc-200/80 bg-white/80 px-4 py-4 backdrop-blur-xl sm:px-6">
-        <div className="mx-auto flex max-w-[1720px] flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex flex-wrap items-start gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-sm font-bold tracking-tight text-white shadow-[0_0_0_1px_rgba(255,255,255,0.08)_inset]">
-              HN
-            </div>
-            <div>
-              <p className="font-[family-name:var(--font-syne)] text-2xl font-bold tracking-tight text-zinc-900 sm:text-[1.65rem] sm:leading-tight">
-                Hardware Nation
-              </p>
-              <p className="mt-0.5 text-sm font-medium text-zinc-500">
-                Content pipeline tracker
-                <span className="mx-2 text-zinc-300">·</span>
-                <span className="tabular-nums text-zinc-600">
-                  {items.length}{" "}
-                  {items.length === 1 ? "founder" : "founders"}
-                  {filter !== "all" ? (
+      <header className="sticky top-0 z-40 shrink-0 border-b border-white/10 bg-[var(--background)]/92 px-4 py-4 backdrop-blur-xl sm:px-6">
+        <div className="mx-auto flex max-w-[1720px] flex-col gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex min-w-0 flex-wrap items-start gap-4">
+              <Link
+                href="/"
+                className="flex h-11 shrink-0 items-stretch"
+                aria-label="Hardware Nation home"
+              >
+                <Image
+                  src="/hwn-logo.png"
+                  alt="Hardware Nation"
+                  width={36}
+                  height={44}
+                  className="h-11 w-auto max-w-[42px] object-contain object-left"
+                  priority
+                />
+              </Link>
+              <div className="min-w-0">
+                <p className="text-2xl font-bold tracking-tight text-zinc-100 sm:text-[1.65rem] sm:leading-tight">
+                  Hardware Nation
+                </p>
+                <p className="mt-1 text-sm tabular-nums text-zinc-500">
+                  Pipeline
+                  <span className="text-zinc-700"> · </span>
+                  <span className="text-zinc-400">{items.length} items</span>
+                  {search.trim() ? (
                     <>
-                      {" "}
-                      <span className="text-zinc-400">(</span>
-                      {filtered.length} shown
-                      <span className="text-zinc-400">)</span>
+                      <span className="text-zinc-700"> · </span>
+                      <span>{filtered.length} shown</span>
                     </>
                   ) : null}
-                </span>
-              </p>
+                </p>
+                <p className="mt-2 text-xs font-normal tabular-nums tracking-normal text-zinc-500">
+                  {STAGES.map((s, i) => (
+                    <span key={s.id}>
+                      {i > 0 ? <span className="text-zinc-700"> · </span> : null}
+                      {s.shortLabel}{" "}
+                      <span className="text-zinc-400">
+                        {byStage.get(s.id)?.length ?? 0}
+                      </span>
+                    </span>
+                  ))}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+              <Link
+                href="/news"
+                className="inline-flex items-center justify-center rounded-lg border border-white/12 bg-[var(--background)] px-4 py-2 text-[13px] font-medium text-zinc-300 transition hover:border-white/20 hover:text-zinc-100"
+              >
+                News
+              </Link>
+              <Link
+                href="/launches"
+                className="inline-flex items-center justify-center rounded-lg border border-white/12 bg-[var(--background)] px-4 py-2 text-[13px] font-medium text-zinc-300 transition hover:border-white/20 hover:text-zinc-100"
+              >
+                Launches
+              </Link>
+              <button
+                type="button"
+                onClick={openCreate}
+                title="New item (A)"
+                className="hwn-btn-primary inline-flex items-center justify-center rounded-lg px-4 py-2 text-[13px] font-medium transition active:scale-[0.99]"
+              >
+                New
+              </button>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-            <div
-              className="inline-flex w-fit rounded-full bg-zinc-200/70 p-1 ring-1 ring-zinc-900/5"
-              role="tablist"
-              aria-label="Filter by asset type"
-            >
-              {FILTER_TABS.map((tab) => {
-                const active = filter === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => setFilter(tab.id)}
-                    className={`rounded-full px-3.5 py-2 text-xs font-semibold transition-all duration-200 sm:px-4 sm:text-sm ${
-                      active
-                        ? "bg-white text-zinc-900 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-zinc-900/8"
-                        : "text-zinc-600 hover:text-zinc-900"
-                    }`}
-                    title={tab.label}
-                  >
-                    <span className="sm:hidden">{tab.short}</span>
-                    <span className="hidden sm:inline">{tab.label}</span>
-                  </button>
-                );
-              })}
+          {upcoming.length > 0 ? (
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5">
+              <p className="text-xs text-zinc-500">Scheduled</p>
+              <ul className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1">
+                {upcoming.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => openEdit(item)}
+                      className="text-left text-[13px] text-zinc-300 transition hover:text-zinc-100"
+                    >
+                      {formatShortFilmLine(item)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
+          ) : null}
 
-            <Link
-              href="/news"
-              className="inline-flex items-center justify-center rounded-full border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 ring-1 ring-zinc-950/[0.04] transition hover:border-zinc-300 hover:bg-zinc-50"
-            >
-              News agent
-            </Link>
-
-            <button
-              type="button"
-              onClick={openCreate}
-              className="group inline-flex items-center justify-center gap-2 rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800 active:scale-[0.98]"
-            >
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/15 text-base leading-none transition group-hover:bg-white/25">
-                +
-              </span>
-              Add founder
-            </button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <label className="sr-only" htmlFor="pipeline-search">
+              Search
+            </label>
+            <input
+              ref={searchRef}
+              id="pipeline-search"
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search"
+              className="hwn-focus-ring min-h-10 w-full min-w-[12rem] flex-1 rounded-lg border border-white/12 bg-[var(--background)] px-3 py-2 text-[13px] text-zinc-200 outline-none placeholder:text-zinc-600 sm:max-w-sm"
+              autoComplete="off"
+            />
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCompact((c) => !c)}
+                className={`rounded-lg border px-3 py-2 text-[13px] font-medium transition ${
+                  compact
+                    ? "border-white/20 bg-white/[0.06] text-zinc-200"
+                    : "border-white/10 bg-transparent text-zinc-500 hover:border-white/15 hover:text-zinc-300"
+                }`}
+              >
+                Compact
+              </button>
+              <button
+                type="button"
+                onClick={exportJson}
+                title="Download JSON backup"
+                className="rounded-lg border border-white/10 bg-transparent px-3 py-2 text-[13px] font-medium text-zinc-500 transition hover:border-white/15 hover:text-zinc-300"
+              >
+                Export
+              </button>
+              <button
+                type="button"
+                onClick={() => importRef.current?.click()}
+                title="Replace board from JSON file"
+                className="rounded-lg border border-white/10 bg-transparent px-3 py-2 text-[13px] font-medium text-zinc-500 transition hover:border-white/15 hover:text-zinc-300"
+              >
+                Import
+              </button>
+              <input
+                ref={importRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={onImportPick}
+              />
+            </div>
           </div>
+
+          <p className="text-[11px] leading-relaxed text-zinc-600">
+            A new item · / search · drag handle to move · Esc closes dialog
+          </p>
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="mx-auto flex w-full max-w-[1720px] flex-1 flex-col px-4 py-6 sm:px-6">
-          <div className="board-scroll flex min-h-[calc(100vh-12rem)] min-h-0 flex-1 gap-4 overflow-x-auto pb-3">
-            {STAGES.map((stage) => {
-              const columnItems = byStage.get(stage.id) ?? [];
-              return (
-                <section
-                  key={stage.id}
-                  className="relative flex w-[min(92vw,300px)] shrink-0 flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white/70 shadow-[0_1px_0_rgba(0,0,0,0.04)] ring-1 ring-zinc-950/[0.04] backdrop-blur-sm"
-                >
-                  <div
-                    className={`pointer-events-none absolute inset-x-0 top-0 h-24 ${stage.columnTint}`}
-                    aria-hidden
-                  />
-                  <div className="relative border-b border-zinc-100 bg-white/90 px-3.5 py-3.5 backdrop-blur-sm">
-                    <div className="flex items-start gap-3">
-                      <span
-                        className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${stage.dotClass} ring-4 ${stage.ringClass}`}
-                        aria-hidden
-                      />
-                      <div className="min-w-0 flex-1">
-                        <h2 className="font-[family-name:var(--font-syne)] text-[0.8125rem] font-bold leading-snug tracking-tight text-zinc-900">
-                          {stage.title}
-                        </h2>
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="inline-flex items-center rounded-md bg-zinc-100 px-2 py-0.5 font-mono text-[11px] font-semibold tabular-nums tracking-wide text-zinc-600">
-                            {columnItems.length}
-                          </span>
-                          <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">
-                            {columnItems.length === 1 ? "card" : "cards"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="relative flex min-h-[220px] flex-1 flex-col gap-2.5 overflow-y-auto p-2.5">
-                    {columnItems.length === 0 ? (
-                      <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-zinc-300/70 bg-zinc-50/50 px-4 py-10 text-center">
-                        <p className="text-xs font-medium text-zinc-400">
-                          Nothing here yet
-                        </p>
-                        <p className="mt-1 max-w-[12rem] text-[11px] leading-relaxed text-zinc-400">
-                          Move someone in via the card editor, or tap{" "}
-                          <span className="font-semibold text-zinc-500">
-                            Add founder
-                          </span>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
+            <div className="board-scroll flex min-h-[calc(100vh-12rem)] min-h-0 flex-1 snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3 md:snap-none">
+              {STAGES.map((stage) => {
+                const rawList = byStage.get(stage.id) ?? [];
+                const list =
+                  stage.id === FINAL_STAGE_ID
+                    ? [...rawList].sort(compareFilmOrder)
+                    : rawList;
+                return (
+                  <PipelineKanbanColumn
+                    key={stage.id}
+                    stage={stage}
+                    itemCount={list.length}
+                  >
+                    {list.length === 0 ? (
+                      <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-white/10 bg-transparent px-4 py-10 text-center">
+                        <p className="text-[13px] text-zinc-500">Empty</p>
+                        <p className="mt-1 max-w-[14rem] text-xs leading-relaxed text-zinc-600">
+                          Drop from the handle or set stage in the editor.
                         </p>
                       </div>
                     ) : (
-                      columnItems.map((item) => (
-                        <button
+                      list.map((item) => (
+                        <PipelineKanbanCard
                           key={item.id}
-                          type="button"
-                          onClick={() => openEdit(item)}
-                          className={`group relative w-full overflow-hidden rounded-xl border border-zinc-200/90 border-l-[3px] ${stage.stripeClass} bg-white px-3 py-3 text-left shadow-[0_1px_0_rgba(0,0,0,0.03)] transition duration-200 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.14)] active:translate-y-0`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="font-[family-name:var(--font-syne)] text-[0.9375rem] font-bold leading-snug tracking-tight text-zinc-900">
-                              {item.founderName}
-                            </span>
-                            <span
-                              className={
-                                item.type === "ugc"
-                                  ? "shrink-0 rounded-lg bg-gradient-to-b from-orange-50 to-orange-100/80 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-orange-950 ring-1 ring-orange-200/80"
-                                  : "shrink-0 rounded-lg bg-gradient-to-b from-blue-50 to-blue-100/80 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-blue-950 ring-1 ring-blue-200/80"
-                              }
-                            >
-                              {TYPE_LABELS[item.type]}
-                            </span>
-                          </div>
-                          <p className="mt-2.5 flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
-                            <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                              {item.stageId === FINAL_STAGE_ID
-                                ? "Film date"
-                                : "Updated"}
-                            </span>
-                            <span className="tabular-nums text-zinc-500">
-                              {formatDisplayDate(item.date)}
-                            </span>
-                          </p>
-                          {item.notes ? (
-                            <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-zinc-600">
-                              {item.notes}
-                            </p>
-                          ) : null}
-                        </button>
+                          item={item}
+                          stage={stage}
+                          compact={compact}
+                          onOpen={openEdit}
+                        />
                       ))
                     )}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
+                  </PipelineKanbanColumn>
+                );
+              })}
+            </div>
+
+            <DragOverlay dropAnimation={null}>
+              {activeDragItem ? (
+                <PipelineKanbanCardPreview
+                  item={activeDragItem}
+                  stage={activeStage}
+                />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         </div>
       </div>
 
