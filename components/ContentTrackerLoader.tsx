@@ -9,7 +9,7 @@ const ContentTracker = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="bg-app-grid flex min-h-screen flex-col items-center justify-center gap-4 px-6">
+      <div className="bg-app-grid flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-6">
         <div className="flex h-12 items-center">
           <Image
             src="/hwn-logo.png"
@@ -32,5 +32,9 @@ const ContentTracker = dynamic(
 );
 
 export function ContentTrackerLoader() {
-  return <ContentTracker />;
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <ContentTracker />
+    </div>
+  );
 }

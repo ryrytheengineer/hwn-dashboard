@@ -3,7 +3,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { ChecklistItem, ContentItem } from "@/lib/content-types";
-import { FINAL_STAGE_ID, STAGES } from "@/lib/content-types";
+import { isScheduledStage, STAGES } from "@/lib/content-types";
 import { filmSoonKind } from "@/lib/pipeline-utils";
 
 type StageConfig = (typeof STAGES)[number];
@@ -132,11 +132,11 @@ export function PipelineKanbanCard({ item, stage, compact, onOpen }: Props) {
           }`}
         >
           <span className="text-zinc-600">
-            {item.stageId === FINAL_STAGE_ID ? "Scheduled" : "Updated"}
+            {isScheduledStage(item.stageId) ? "Scheduled" : "Updated"}
           </span>
           <span className="tabular-nums text-zinc-400">
             {formatDisplayDate(item.date)}
-            {item.stageId === FINAL_STAGE_ID && item.filmTime.trim()
+            {isScheduledStage(item.stageId) && item.filmTime.trim()
               ? ` · ${formatDisplayFilmTime(item.filmTime)}`
               : ""}
           </span>
@@ -198,7 +198,7 @@ export function PipelineKanbanCardPreview({
 }) {
   return (
     <div
-      className={`pointer-events-none w-[min(92vw,280px)] rounded-lg border border-white/10 border-l-2 ${stage.stripeClass} bg-[var(--background)] px-3 py-2.5 shadow-lg ring-1 ring-white/10`}
+      className={`pointer-events-none w-[min(88vw,220px)] rounded-lg border border-white/10 border-l-2 ${stage.stripeClass} bg-[var(--background)] px-2.5 py-2 shadow-lg ring-1 ring-white/10 sm:w-[min(90vw,260px)]`}
     >
       <p className="text-sm font-semibold text-zinc-100">
         {item.founderName}

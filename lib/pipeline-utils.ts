@@ -1,9 +1,9 @@
 import type { ContentItem } from "@/lib/content-types";
-import { FINAL_STAGE_ID } from "@/lib/content-types";
+import { isScheduledStage } from "@/lib/content-types";
 
 /** Parse YYYY-MM-DD + optional HH:mm to epoch ms in local time. */
 export function filmDateTimeMs(item: ContentItem): number | null {
-  if (item.stageId !== FINAL_STAGE_ID || !item.date?.trim()) return null;
+  if (!isScheduledStage(item.stageId) || !item.date?.trim()) return null;
   const time = item.filmTime?.trim();
   const iso = time && /^\d{1,2}:\d{2}/.test(time)
     ? `${item.date}T${time.length === 5 ? time : time.slice(0, 5)}:00`
@@ -16,7 +16,7 @@ export type FilmSoonKind = "soon" | "past";
 
 /** Within next 7 days (and not past) → soon; already passed → past. */
 export function filmSoonKind(item: ContentItem): FilmSoonKind | null {
-  if (item.stageId !== FINAL_STAGE_ID) return null;
+  if (!isScheduledStage(item.stageId)) return null;
   const t = filmDateTimeMs(item);
   if (t == null) return null;
   const now = Date.now();
@@ -39,7 +39,7 @@ export function upcomingFilms(
   items: ContentItem[],
   limit: number
 ): ContentItem[] {
-  const films = items.filter((i) => i.stageId === FINAL_STAGE_ID);
+  const films = items.filter((i) => isScheduledStage(i.stageId));
   const withMs = films
     .map((i) => ({ item: i, ms: filmDateTimeMs(i) }))
     .filter((x): x is { item: ContentItem; ms: number } => x.ms != null)

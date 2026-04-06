@@ -2,6 +2,7 @@ export type StageId =
   | "emailed_rit"
   | "rit_reached_out"
   | "founder_agreed"
+  | "remote_reel"
   | "no_reply"
   | "film_planned";
 
@@ -81,6 +82,16 @@ export const STAGES: readonly {
       "bg-gradient-to-b from-[#9fcc00]/[0.2] via-transparent to-transparent",
   },
   {
+    id: "remote_reel",
+    title: "Remote reel / TikTok",
+    shortLabel: "Remote",
+    dotClass: "bg-cyan-400",
+    ringClass: "ring-cyan-400/35",
+    stripeClass: "border-l-cyan-400",
+    columnTint:
+      "bg-gradient-to-b from-cyan-400/[0.14] via-transparent to-transparent",
+  },
+  {
     id: "no_reply",
     title: "No reply / declined",
     shortLabel: "Declined",
@@ -102,4 +113,10 @@ export const STAGES: readonly {
   },
 ] as const;
 
+/** On-location or founder shoot — last column in the outreach track. */
 export const FINAL_STAGE_ID: StageId = "film_planned";
+
+/** Stages that use target date + optional time (strip, sorting, card “Scheduled”). */
+export function isScheduledStage(stageId: StageId): boolean {
+  return stageId === "film_planned" || stageId === "remote_reel";
+}

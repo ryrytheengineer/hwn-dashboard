@@ -22,7 +22,7 @@ import { PipelineKanbanColumn } from "@/components/PipelineKanbanColumn";
 import { useContentItems } from "@/hooks/useContentItems";
 import { parsePipelineImportJson } from "@/lib/content-normalize";
 import type { ContentItem, StageId } from "@/lib/content-types";
-import { FINAL_STAGE_ID, STAGES } from "@/lib/content-types";
+import { isScheduledStage, STAGES } from "@/lib/content-types";
 import {
   compareFilmOrder,
   filterItemsBySearch,
@@ -195,14 +195,14 @@ export function ContentTracker() {
     : STAGES[0];
 
   return (
-    <div className="bg-app-grid flex min-h-0 flex-1 flex-col">
-      <header className="sticky top-0 z-40 shrink-0 border-b border-white/10 bg-[var(--background)]/92 px-4 py-4 backdrop-blur-xl sm:px-6">
-        <div className="mx-auto flex max-w-[1720px] flex-col gap-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex min-w-0 flex-wrap items-start gap-4">
+    <div className="bg-app-grid flex h-full min-h-0 min-w-0 flex-1 flex-col">
+      <header className="z-40 shrink-0 border-b border-white/10 bg-[var(--background)]/92 px-3 py-3 backdrop-blur-xl sm:px-4">
+        <div className="mx-auto flex w-full min-w-0 flex-col gap-2.5">
+          <div className="flex flex-col gap-2.5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex min-w-0 flex-wrap items-start gap-3 sm:gap-4">
               <Link
                 href="/"
-                className="flex h-11 shrink-0 items-stretch"
+                className="flex h-9 shrink-0 items-stretch sm:h-10"
                 aria-label="Hardware Nation home"
               >
                 <Image
@@ -210,15 +210,15 @@ export function ContentTracker() {
                   alt="Hardware Nation"
                   width={36}
                   height={44}
-                  className="h-11 w-auto max-w-[42px] object-contain object-left"
+                  className="h-9 w-auto max-w-[38px] object-contain object-left sm:h-10 sm:max-w-[40px]"
                   priority
                 />
               </Link>
               <div className="min-w-0">
-                <p className="text-2xl font-bold tracking-tight text-zinc-100 sm:text-[1.65rem] sm:leading-tight">
+                <p className="text-lg font-bold tracking-tight text-zinc-100 sm:text-xl">
                   Hardware Nation
                 </p>
-                <p className="mt-1 text-sm tabular-nums text-zinc-500">
+                <p className="mt-0.5 text-xs tabular-nums text-zinc-500 sm:text-sm">
                   Pipeline
                   <span className="text-zinc-700"> · </span>
                   <span className="text-zinc-400">{items.length} items</span>
@@ -229,7 +229,7 @@ export function ContentTracker() {
                     </>
                   ) : null}
                 </p>
-                <p className="mt-2 text-xs font-normal tabular-nums tracking-normal text-zinc-500">
+                <p className="mt-1 text-[10px] font-normal tabular-nums tracking-normal text-zinc-500 sm:text-[11px]">
                   {STAGES.map((s, i) => (
                     <span key={s.id}>
                       {i > 0 ? <span className="text-zinc-700"> · </span> : null}
@@ -243,16 +243,16 @@ export function ContentTracker() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+            <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
               <Link
                 href="/news"
-                className="inline-flex items-center justify-center rounded-lg border border-white/12 bg-[var(--background)] px-4 py-2 text-[13px] font-medium text-zinc-300 transition hover:border-white/20 hover:text-zinc-100"
+                className="inline-flex items-center justify-center rounded-lg border border-white/12 bg-[var(--background)] px-3 py-1.5 text-[12px] font-medium text-zinc-300 transition hover:border-white/20 hover:text-zinc-100 sm:px-4 sm:py-2 sm:text-[13px]"
               >
                 News
               </Link>
               <Link
                 href="/launches"
-                className="inline-flex items-center justify-center rounded-lg border border-white/12 bg-[var(--background)] px-4 py-2 text-[13px] font-medium text-zinc-300 transition hover:border-white/20 hover:text-zinc-100"
+                className="inline-flex items-center justify-center rounded-lg border border-white/12 bg-[var(--background)] px-3 py-1.5 text-[12px] font-medium text-zinc-300 transition hover:border-white/20 hover:text-zinc-100 sm:px-4 sm:py-2 sm:text-[13px]"
               >
                 Launches
               </Link>
@@ -260,7 +260,7 @@ export function ContentTracker() {
                 type="button"
                 onClick={openCreate}
                 title="New item (A)"
-                className="hwn-btn-primary inline-flex items-center justify-center rounded-lg px-4 py-2 text-[13px] font-medium transition active:scale-[0.99]"
+                className="hwn-btn-primary inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-medium transition active:scale-[0.99] sm:px-4 sm:py-2 sm:text-[13px]"
               >
                 New
               </button>
@@ -268,15 +268,15 @@ export function ContentTracker() {
           </div>
 
           {upcoming.length > 0 ? (
-            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5">
-              <p className="text-xs text-zinc-500">Scheduled</p>
-              <ul className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1">
+            <div className="rounded-lg border border-white/10 bg-white/[0.02] px-2.5 py-2">
+              <p className="text-[11px] text-zinc-500">Scheduled</p>
+              <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5">
                 {upcoming.map((item) => (
                   <li key={item.id}>
                     <button
                       type="button"
                       onClick={() => openEdit(item)}
-                      className="text-left text-[13px] text-zinc-300 transition hover:text-zinc-100"
+                      className="text-left text-[11px] text-zinc-300 transition hover:text-zinc-100 sm:text-[12px]"
                     >
                       {formatShortFilmLine(item)}
                     </button>
@@ -286,7 +286,7 @@ export function ContentTracker() {
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center">
             <label className="sr-only" htmlFor="pipeline-search">
               Search
             </label>
@@ -297,14 +297,14 @@ export function ContentTracker() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search"
-              className="hwn-focus-ring min-h-10 w-full min-w-[12rem] flex-1 rounded-lg border border-white/12 bg-[var(--background)] px-3 py-2 text-[13px] text-zinc-200 outline-none placeholder:text-zinc-600 sm:max-w-sm"
+              className="hwn-focus-ring min-h-9 w-full min-w-0 flex-1 rounded-lg border border-white/12 bg-[var(--background)] px-2.5 py-1.5 text-[12px] text-zinc-200 outline-none placeholder:text-zinc-600 sm:min-h-10 sm:min-w-[12rem] sm:px-3 sm:py-2 sm:text-[13px] sm:max-w-sm"
               autoComplete="off"
             />
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex min-w-0 flex-wrap items-center gap-1">
               <button
                 type="button"
                 onClick={() => setCompact((c) => !c)}
-                className={`rounded-lg border px-3 py-2 text-[13px] font-medium transition ${
+                className={`rounded-lg border px-2.5 py-1.5 text-[12px] font-medium transition sm:px-3 sm:py-2 sm:text-[13px] ${
                   compact
                     ? "border-white/20 bg-white/[0.06] text-zinc-200"
                     : "border-white/10 bg-transparent text-zinc-500 hover:border-white/15 hover:text-zinc-300"
@@ -316,7 +316,7 @@ export function ContentTracker() {
                 type="button"
                 onClick={exportJson}
                 title="Download JSON backup"
-                className="rounded-lg border border-white/10 bg-transparent px-3 py-2 text-[13px] font-medium text-zinc-500 transition hover:border-white/15 hover:text-zinc-300"
+                className="rounded-lg border border-white/10 bg-transparent px-2.5 py-1.5 text-[12px] font-medium text-zinc-500 transition hover:border-white/15 hover:text-zinc-300 sm:px-3 sm:py-2 sm:text-[13px]"
               >
                 Export
               </button>
@@ -324,7 +324,7 @@ export function ContentTracker() {
                 type="button"
                 onClick={() => importRef.current?.click()}
                 title="Replace board from JSON file"
-                className="rounded-lg border border-white/10 bg-transparent px-3 py-2 text-[13px] font-medium text-zinc-500 transition hover:border-white/15 hover:text-zinc-300"
+                className="rounded-lg border border-white/10 bg-transparent px-2.5 py-1.5 text-[12px] font-medium text-zinc-500 transition hover:border-white/15 hover:text-zinc-300 sm:px-3 sm:py-2 sm:text-[13px]"
               >
                 Import
               </button>
@@ -338,14 +338,14 @@ export function ContentTracker() {
             </div>
           </div>
 
-          <p className="text-[11px] leading-relaxed text-zinc-600">
-            A new item · / search · drag handle to move · Esc closes dialog
+          <p className="hidden text-[10px] leading-snug text-zinc-600 lg:block">
+            A new item · / search · drag to move · Esc closes dialog
           </p>
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="mx-auto flex w-full max-w-[1720px] flex-1 flex-col px-4 py-6 sm:px-6">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="mx-auto flex w-full min-w-0 flex-1 flex-col px-2 py-2 sm:px-3 sm:py-3">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCorners}
@@ -353,13 +353,13 @@ export function ContentTracker() {
             onDragEnd={handleDragEnd}
             onDragCancel={handleDragCancel}
           >
-            <div className="board-scroll flex min-h-[calc(100vh-12rem)] min-h-0 flex-1 snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3 md:snap-none">
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="board-scroll flex min-h-0 flex-1 snap-x snap-mandatory flex-row gap-1.5 overflow-x-auto overflow-y-hidden pb-1 sm:gap-2 lg:overflow-x-hidden">
               {STAGES.map((stage) => {
                 const rawList = byStage.get(stage.id) ?? [];
-                const list =
-                  stage.id === FINAL_STAGE_ID
-                    ? [...rawList].sort(compareFilmOrder)
-                    : rawList;
+                const list = isScheduledStage(stage.id)
+                  ? [...rawList].sort(compareFilmOrder)
+                  : rawList;
                 return (
                   <PipelineKanbanColumn
                     key={stage.id}
@@ -367,9 +367,9 @@ export function ContentTracker() {
                     itemCount={list.length}
                   >
                     {list.length === 0 ? (
-                      <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-white/10 bg-transparent px-4 py-10 text-center">
-                        <p className="text-[13px] text-zinc-500">Empty</p>
-                        <p className="mt-1 max-w-[14rem] text-xs leading-relaxed text-zinc-600">
+                      <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-white/10 bg-transparent px-2 py-6 text-center">
+                        <p className="text-[11px] text-zinc-500 sm:text-[12px]">Empty</p>
+                        <p className="mt-1 max-w-[9rem] text-[10px] leading-relaxed text-zinc-600 sm:max-w-[14rem] sm:text-xs">
                           Drop from the handle or set stage in the editor.
                         </p>
                       </div>
@@ -387,16 +387,17 @@ export function ContentTracker() {
                   </PipelineKanbanColumn>
                 );
               })}
-            </div>
+              </div>
 
-            <DragOverlay dropAnimation={null}>
-              {activeDragItem ? (
-                <PipelineKanbanCardPreview
-                  item={activeDragItem}
-                  stage={activeStage}
-                />
-              ) : null}
-            </DragOverlay>
+              <DragOverlay dropAnimation={null}>
+                {activeDragItem ? (
+                  <PipelineKanbanCardPreview
+                    item={activeDragItem}
+                    stage={activeStage}
+                  />
+                ) : null}
+              </DragOverlay>
+            </div>
           </DndContext>
         </div>
       </div>

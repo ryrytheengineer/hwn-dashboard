@@ -9,7 +9,7 @@ import type {
 } from "@/lib/content-types";
 import {
   DEFAULT_CHECKLIST_TEMPLATES,
-  FINAL_STAGE_ID,
+  isScheduledStage,
   STAGES,
 } from "@/lib/content-types";
 
@@ -101,7 +101,18 @@ export function FounderModal({
   }, [onClose]);
 
   const dateLabel =
-    form.stageId === FINAL_STAGE_ID ? "Film date" : "Updated";
+    form.stageId === "film_planned"
+      ? "Film date"
+      : form.stageId === "remote_reel"
+        ? "Target date"
+        : "Updated";
+
+  const timeLabel =
+    form.stageId === "film_planned"
+      ? "Film time"
+      : form.stageId === "remote_reel"
+        ? "Time (optional)"
+        : "Time";
 
   const isPerson = form.entityKind === "person";
 
@@ -291,7 +302,7 @@ export function FounderModal({
                 htmlFor="film-time"
                 className="text-xs font-bold uppercase tracking-wider text-zinc-400"
               >
-                Film time
+                {timeLabel}
               </label>
               <input
                 id="film-time"
@@ -303,9 +314,10 @@ export function FounderModal({
                 }
                 className={`${inputClass} hwn-datetime-input`}
               />
-              {form.stageId !== FINAL_STAGE_ID ? (
+              {!isScheduledStage(form.stageId) ? (
                 <p className="mt-1.5 text-[11px] leading-snug text-zinc-500">
-                  Shown on the card when stage is &quot;Film date planned&quot;.
+                  Shown on the card for &quot;Film date planned&quot; and
+                  &quot;Remote reel / TikTok&quot;.
                 </p>
               ) : null}
             </div>
