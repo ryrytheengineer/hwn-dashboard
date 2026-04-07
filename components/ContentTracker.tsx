@@ -24,6 +24,12 @@ import { parsePipelineImportJson } from "@/lib/content-normalize";
 import type { ContentItem, StageId } from "@/lib/content-types";
 import { isScheduledStage, STAGES } from "@/lib/content-types";
 import {
+  readPipelineCompact,
+  readPipelineSearch,
+  writePipelineCompact,
+  writePipelineSearch,
+} from "@/lib/pipeline-ui-storage";
+import {
   compareFilmOrder,
   filterItemsBySearch,
   upcomingFilms,
@@ -55,8 +61,16 @@ function formatShortFilmLine(item: ContentItem): string {
 export function ContentTracker() {
   const { items, addItem, updateItem, removeItem, replaceAllItems } =
     useContentItems();
-  const [search, setSearch] = useState("");
-  const [compact, setCompact] = useState(false);
+  const [search, setSearch] = useState(readPipelineSearch);
+  const [compact, setCompact] = useState(readPipelineCompact);
+
+  useEffect(() => {
+    writePipelineSearch(search);
+  }, [search]);
+
+  useEffect(() => {
+    writePipelineCompact(compact);
+  }, [compact]);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [editing, setEditing] = useState<ContentItem | null>(null);

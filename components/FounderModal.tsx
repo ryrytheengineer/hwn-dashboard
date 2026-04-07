@@ -12,6 +12,14 @@ import {
   isScheduledStage,
   STAGES,
 } from "@/lib/content-types";
+import {
+  clearModalDraftCreate,
+  clearModalDraftEdit,
+  loadModalDraftCreate,
+  loadModalDraftEdit,
+  writeModalDraftCreate,
+  writeModalDraftEdit,
+} from "@/lib/modal-draft-storage";
 
 type Mode = "create" | "edit";
 
@@ -88,9 +96,25 @@ export function FounderModal({
   onDelete,
 }: Props) {
   const titleId = useId();
-  const [form, setForm] = useState<ContentItem>(() =>
-    buildInitialForm(mode, initial)
-  );
+  const [form, setForm] = useState<ContentItem>(() => {
+    if (mode === "edit" && initial) {
+      const draft = loadModalDraftEdit(initial.id);
+      if (draft) return draft;
+    }
+    if (mode === "create") {
+      const draft = loadModalDraftCreate();
+      if (draft) return draft;
+    }
+    return buildInitialForm(mode, initial);
+  });
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      if (mode === "create") writeModalDraftCreate(form);
+      else writeModalDraftEdit(form);
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [form, mode]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -133,11 +157,14 @@ export function FounderModal({
       notes: form.notes.trim(),
       checklist,
     });
+    if (mode === "create") clearModalDraftCreate();
+    else clearModalDraftEdit(form.id);
     onClose();
   };
 
   const handleDelete = () => {
     if (mode === "edit" && initial && onDelete) {
+      clearModalDraftEdit(initial.id);
       onDelete(initial.id);
       onClose();
     }
@@ -172,8 +199,8 @@ export function FounderModal({
           </h2>
           <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
             {mode === "create"
-              ? "Choose person or product, then place them on the board."
-              : "Update details — changes save to this device instantly."}
+              ? "Choose person or product, then place them on the board. Your entries autosave as a draft on this device."
+              : "Update details — changes save to this device when you tap Save changes. Edits autosave as a draft until then."}
           </p>
         </div>
 

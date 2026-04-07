@@ -1,7 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { HardwareLaunchRow } from "@/lib/hardware-launches";
+import {
+  readLaunchesFilters,
+  writeLaunchesFilters,
+} from "@/lib/launches-ui-storage";
 import { launchCoverageSearchUrl } from "@/lib/launch-coverage-link";
 
 type Props = {
@@ -73,11 +77,39 @@ export function HardwareLaunchesView({ launches, sheetNames }: Props) {
   );
   const [category, setCategory] = useState<string>("all");
   const [sheet, setSheet] = useState<string>("all");
+  const [filtersHydrated, setFiltersHydrated] = useState(false);
 
   const categories = useMemo(() => {
     const set = new Set(launches.map((l) => l.category));
     return [...set].sort((a, b) => a.localeCompare(b));
   }, [launches]);
+
+  useEffect(() => {
+    const saved = readLaunchesFilters();
+    queueMicrotask(() => {
+      if (saved) {
+        setSegment(saved.segment);
+        setCategory(saved.category);
+        setSheet(saved.sheet);
+      }
+      setFiltersHydrated(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!filtersHydrated) return;
+    const categoryOk = category === "all" || categories.includes(category);
+    const sheetOk = sheet === "all" || sheetNames.includes(sheet);
+    if (!categoryOk) {
+      queueMicrotask(() => setCategory("all"));
+      return;
+    }
+    if (!sheetOk) {
+      queueMicrotask(() => setSheet("all"));
+      return;
+    }
+    writeLaunchesFilters({ segment, category, sheet });
+  }, [filtersHydrated, segment, category, sheet, categories, sheetNames]);
 
   const filtered = useMemo(() => {
     return launches.filter((l) => {
